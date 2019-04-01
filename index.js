@@ -1,5 +1,4 @@
 
-
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const express = require('express');
@@ -8,6 +7,9 @@ const helmet = require('helmet');
 const server = express();
 server.use(helmet());
 server.use(express.json());
+
+const restrictedRouter = require('./restricted-router.js');
+server.use('/api/restricted', authCheck, restrictedRouter);
 
 const db = require('./data/dbConfig.js');
 

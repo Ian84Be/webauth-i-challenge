@@ -3,10 +3,14 @@ require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const express = require('express');
 const helmet = require('helmet');
+const session = require('express-session');
+
+const sessionConfig = require('./data/session-config.js');
 
 const server = express();
 server.use(helmet());
 server.use(express.json());
+server.use(session(sessionConfig));
 
 const restrictedRouter = require('./restricted-router.js');
 server.use('/api/restricted', authCheck, restrictedRouter);
@@ -50,6 +54,7 @@ server.post('/api/login', async (req,res) => {
         try {
             const validUser = await db('users').where({username}).first();
             if (validUser && bcrypt.compareSync(password, validUser.password)) {
+                req.session.user = validUser;
                 res.status(200).json({message:`${validUser.username} LOGGED IN`});
             } else {
                 res.status(401).json({message:'invalid credentials'});
@@ -61,12 +66,28 @@ server.post('/api/login', async (req,res) => {
     }
 });
 
-async function authCheck(req,res,next) {
-    const {username,password} = req.headers;
-
+server.get('/api/logout', async (req,res) => {
     try {
-        const validUser = await db('users').where({username}).first();
-        if (validUser && bcrypt.compareSync(password, validUser.password)) {
+        if (req.session) {
+            req.session.destroy(err => {
+              if (err) {
+                res.status(500).json(err);
+              } else {
+                res.status(200).json({message: 'logged out'});
+              }
+            });
+          } else {
+            res.status(500).json({error: 'no session found'});
+          }
+    }
+    catch (err) {
+        res.status(500).json(err);
+    }
+});
+
+async function authCheck(req,res,next) {
+    try {
+        if (req.session.user) {
             next();
         } else {
             res.status(401).json({message:'invalid credentials'});
@@ -75,7 +96,6 @@ async function authCheck(req,res,next) {
     catch(err) {
         res.status(500).json(err);
     }
-
 }
 
 const port = process.env.PORT || 5000;

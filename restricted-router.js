@@ -1,6 +1,7 @@
 
 const router = require('express').Router();
 
+// endpoints for /api/restricted
 router.get('/', async (req,res) => {
     try {
         res.status(200).json({message:'ok go'})
